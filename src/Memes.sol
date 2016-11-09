@@ -1,13 +1,62 @@
-/* Copyright (C) 2016 Augustus York Rushton Pash - All Rights Reserved
- * You may use, distribute and modify this code under the
- * terms of the license, which was distrubted with this code and located
- * at: https://github.com/augustuspash/Central-Dank
- *
- * You should have received a copy of the license with
- * this file. If not, please visit: https://github.com/augustuspash/Central-Dank
- */
-
 pragma solidity ^0.4.2;
+
+contract MemeRecord {
+    struct Record {
+        mapping (string => bool) added;
+        Meme[] memes;
+    }
+    struct Meme {
+        string meme;
+        bytes32 mhash;
+    }
+    
+    mapping (address => Record) records;
+    
+    address owner;
+    
+    function MemeRecord() {
+        owner = msg.sender;
+    }
+    
+    modifier ownerOnly() {
+        if (msg.sender != owner){
+            throw;
+        }
+        _;
+    }
+    
+    function addMeme(string _meme, address _user) ownerOnly {
+        if (!records[_user].added[_meme]) {
+            records[_user].memes.push(Meme(_meme, sha256(_meme)));
+            records[_user].added[_meme] = true;
+        }
+    }
+    
+    function removeMeme(string _meme, address _user, uint256 _index) ownerOnly {
+        if (records[_user].memes.length > _index && records[_user].memes[_index].mhash == sha256(_meme)) {
+            delete records[_user].memes[_index];
+            records[_user].memes[_index] = records[_user].memes[records[_user].memes.length - 1];
+            records[_user].memes.length--;
+            records[_user].added[_meme] = false;
+        }
+    }
+    
+    function inRecord(string _meme, address _user) constant returns (bool recorded) {
+        return records[_user].added[_meme];
+    }
+    
+    function recordLength(address _user) constant returns (uint256 length) {
+        return records[_user].memes.length;
+    }
+    
+    function getRecord(address _user, uint256 _index) constant returns (string meme) {
+        return records[_user].memes[_index].meme;
+    }
+    
+    function selfDestruct(address _reciever) {
+        selfdestruct(_reciever);
+    }
+}
 
 contract TokenOwnership {
     address minter;
@@ -42,6 +91,8 @@ contract Memes is TokenOwnership{
     }
     
     mapping (string => Meme) memes;
+    
+    MemeRecord public memeRecord = new MemeRecord();
     
     uint256 public maxShares = 100;
     uint256 public indexingCost = 100 wei;
@@ -89,6 +140,7 @@ contract Memes is TokenOwnership{
             payed += indexingCost;
             memes[_meme] = Meme(maxShares, true, _url);
             memes[_meme].shares[msg.sender] = maxShares;
+            memeRecord.addMeme(_meme, msg.sender);
             Transfer(_meme, 0, msg.sender, maxShares);
             Created(_meme, msg.sender);
             return true;
@@ -99,6 +151,7 @@ contract Memes is TokenOwnership{
         if (memes[_meme].shares[msg.sender] >= _value && memes[_meme].shares[_to] + _value > memes[_meme].shares[_to]) {
             memes[_meme].shares[msg.sender] -= _value;
             memes[_meme].shares[_to] += _value;
+            memeRecord.addMeme(_meme, _to);
             Transfer(_meme, msg.sender, _to, _value);
             return true;
         } else { return false; }
@@ -109,6 +162,7 @@ contract Memes is TokenOwnership{
             memes[_meme].shares[_to] += _value;
             memes[_meme].shares[_from] -= _value;
             memes[_meme].allowed[_from][msg.sender] -= _value;
+            memeRecord.addMeme(_meme, _to);
             Transfer(_meme, _from, _to, _value);
             return true;
         } else { return false; }
@@ -120,6 +174,7 @@ contract Memes is TokenOwnership{
 
     function approve(string _meme, address _spender, uint256 _value) created(_meme)  returns (bool success) {
         memes[_meme].allowed[msg.sender][_spender] = _value;
+        memeRecord.addMeme(_meme, _spender);
         Approval(_meme, msg.sender, _spender, _value);
         return true;
     }
