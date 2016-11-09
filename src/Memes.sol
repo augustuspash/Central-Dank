@@ -6,7 +6,7 @@
  * You should have received a copy of the license with
  * this file. If not, please visit: https://github.com/augustuspash/Central-Dank
  */
-
+ 
 pragma solidity ^0.4.2;
 
 contract MemeRecord {
@@ -60,10 +60,6 @@ contract MemeRecord {
     
     function getRecord(address _user, uint256 _index) constant returns (string meme) {
         return records[_user].memes[_index].meme;
-    }
-    
-    function selfDestruct(address _reciever) {
-        selfdestruct(_reciever);
     }
 }
 
