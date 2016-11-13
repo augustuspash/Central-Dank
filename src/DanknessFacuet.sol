@@ -10,17 +10,15 @@
 pragma solidity ^0.4.2;
 
 contract Dankness {
-    function Dankness(address _owner, address _minter) ;
-    
-    function mint(uint256 _value) returns (bool success);
-    
-    function destroy(uint256 _value) returns (bool success);
-    
     function transfer(address _to, uint256 _value) returns (bool success) ;
-
+    
+    function transfer(address _to, uint256 _value, string _info) returns (bool success) ;
+    
     function transferFrom(address _from, address _to, uint256 _value) returns (bool success) ;
 
-    function balanceOf(address _owner) constant returns (uint256 balance) ;
+    function transferFrom(address _from, address _to, uint256 _value, string _info) returns (bool success);
+
+    function balanceOf(address _owner) constant returns (uint256 balance);
 
     function approve(address _spender, uint256 _value) returns (bool success);
 
@@ -44,7 +42,7 @@ contract DanknessFacuet {
     function payout() {
         if (!taken[msg.sender] && dankness.balanceOf(this) >= payoutAmount) {
             taken[msg.sender] = true;
-            if (!dankness.transfer(msg.sender, payoutAmount)) {
+            if (!dankness.transfer(msg.sender, payoutAmount, "Dankness Facuet")) {
                 throw;
             } else {
                 Payout(msg.sender, payoutAmount);
