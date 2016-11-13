@@ -6,7 +6,6 @@
  * You should have received a copy of the license with
  * this file. If not, please visit: https://github.com/augustuspash/Central-Dank
  */
- 
 pragma solidity ^0.4.2;
 
 contract MemeRecord {
@@ -21,27 +20,14 @@ contract MemeRecord {
     
     mapping (address => Record) records;
     
-    address owner;
-    
-    function MemeRecord() {
-        owner = msg.sender;
-    }
-    
-    modifier ownerOnly() {
-        if (msg.sender != owner){
-            throw;
-        }
-        _;
-    }
-    
-    function addMeme(string _meme, address _user) ownerOnly {
+    function addMeme(string _meme, address _user) internal {
         if (!records[_user].added[_meme]) {
             records[_user].memes.push(Meme(_meme, sha256(_meme)));
             records[_user].added[_meme] = true;
         }
     }
     
-    function removeMeme(string _meme, address _user, uint256 _index) ownerOnly {
+    function removeMeme(string _meme, address _user, uint256 _index) internal {
         if (records[_user].memes.length > _index && records[_user].memes[_index].mhash == sha256(_meme)) {
             delete records[_user].memes[_index];
             records[_user].memes[_index] = records[_user].memes[records[_user].memes.length - 1];
@@ -60,10 +46,6 @@ contract MemeRecord {
     
     function getRecord(address _user, uint256 _index) constant returns (string meme) {
         return records[_user].memes[_index].meme;
-    }
-    
-    function selfDestruct(address _reciever) ownerOnly {
-        selfdestruct(_reciever);
     }
 }
 
@@ -90,7 +72,7 @@ contract TokenOwnership {
     }
 }
 
-contract Memes is TokenOwnership{
+contract Memes is TokenOwnership, MemeRecord{
     struct Meme {
         uint256 maxShares;
         bool created;
@@ -100,8 +82,7 @@ contract Memes is TokenOwnership{
     }
     
     mapping (string => Meme) memes;
-    
-    MemeRecord public memeRecord = new MemeRecord();
+    string[] memeList;
     
     uint256 public maxShares = 100;
     uint256 public indexingCost = 100 wei;
@@ -153,9 +134,10 @@ contract Memes is TokenOwnership{
             payed += indexingCost;
             memes[_meme] = Meme(maxShares, true, _url);
             memes[_meme].shares[msg.sender] = maxShares;
-            memeRecord.addMeme(_meme, msg.sender);
+            addMeme(_meme, msg.sender);
             Transfer(_meme, 0, msg.sender, maxShares);
             Created(_meme, msg.sender);
+            memeList.push(_meme);
             return true;
         } else { throw; }
     }
@@ -164,7 +146,7 @@ contract Memes is TokenOwnership{
         if (memes[_meme].shares[msg.sender] >= _value && memes[_meme].shares[_to] + _value > memes[_meme].shares[_to]) {
             memes[_meme].shares[msg.sender] -= _value;
             memes[_meme].shares[_to] += _value;
-            memeRecord.addMeme(_meme, _to);
+            addMeme(_meme, _to);
             Transfer(_meme, msg.sender, _to, _value);
             return true;
         } else { return false; }
@@ -175,7 +157,7 @@ contract Memes is TokenOwnership{
             memes[_meme].shares[_to] += _value;
             memes[_meme].shares[_from] -= _value;
             memes[_meme].allowed[_from][msg.sender] -= _value;
-            memeRecord.addMeme(_meme, _to);
+            addMeme(_meme, _to);
             Transfer(_meme, _from, _to, _value);
             return true;
         } else { return false; }
@@ -187,7 +169,7 @@ contract Memes is TokenOwnership{
 
     function approve(string _meme, address _spender, uint256 _value) created(_meme)  returns (bool success) {
         memes[_meme].allowed[msg.sender][_spender] = _value;
-        memeRecord.addMeme(_meme, _spender);
+        addMeme(_meme, _spender);
         Approval(_meme, msg.sender, _spender, _value);
         return true;
     }
@@ -206,5 +188,39 @@ contract Memes is TokenOwnership{
     
     function isCreated(string _meme) constant returns (bool created) {
         return memes[_meme].created;
+    }
+    
+    function numberOfMemes() constant returns (uint256 length) {
+        return memeList.length;
+    }
+    
+    function getMemeFromList(uint256 _index) constant returns (string meme) {
+        return memeList[_index];
+    }
+    
+    function getGroupFromMemeList(uint256 _index) constant returns (string meme1, string meme2, string meme3, string meme4, string meme5, string meme6, string meme7) {
+        string memory output;
+        for (uint256 i = 0; i < 10; i++) {
+            if (i + _index < memeList.length) {
+                output = memeList[i + _index];
+            } else {
+                output = "";
+            }
+            if (i == 0) {
+                meme1 = output;
+            } else if (i == 1) {
+                meme2 = output;
+            } else if (i == 2) {
+                meme3 = output;
+            } else if (i == 3) {
+                meme4 = output;
+            } else if (i == 4) {
+                meme5 = output;
+            } else if (i == 5) {
+                meme6 = output;
+            } else if (i == 6) {
+                meme7 = output;
+            } 
+        }
     }
 }

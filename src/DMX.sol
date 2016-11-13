@@ -236,7 +236,7 @@ contract DMX is DMXMemeRecords, ExchangeOwnership {
     }
     
     function placeListing(string _meme, uint256 _price, uint256 _amount, string _key) created(_meme) returns (bool success) {
-        if (memes.allowance(_meme, msg.sender, this) >= _amount) {
+        if (memes.allowance(_meme, msg.sender, this) >= _amount && memes.sharesOf(_meme, msg.sender) >= _amount) {
             return addListing(_meme, msg.sender, _price, _amount, _key);
         } else {
             return false;
@@ -254,13 +254,10 @@ contract DMX is DMXMemeRecords, ExchangeOwnership {
         uint256 gross = _amount * memeListings[_meme].directPrice + exchangeFee;
         
         if (gross >= _amount && gross >= memeListings[_meme].directPrice && gross >= exchangeFee) {
-            if (memes.sharesOf(_meme, this) >= _amount 
-                && dankness.allowance(msg.sender, this) >= gross) {
-                if (dankness.transferFrom(msg.sender, this, gross, exchangeTransferMessage) && 
-                        memes.transfer(_meme, msg.sender, _amount)) {
-                    updateDirectPrice(_meme, memeListings[_meme].directPrice);
-                    return true;
-                }
+            if (dankness.transferFrom(msg.sender, this, gross, exchangeTransferMessage) && 
+                    memes.transfer(_meme, msg.sender, _amount)) {
+                updateDirectPrice(_meme, memeListings[_meme].directPrice);
+                return true;
             }
         }
         
@@ -276,26 +273,22 @@ contract DMX is DMXMemeRecords, ExchangeOwnership {
         }
         
         if (gross >= listing.price && gross >= exchangeFee) {
-            if (memes.allowance(_meme, listing.person, this) >= listing.amount) {
-                if (dankness.allowance(msg.sender, this) >= gross) {
-                    if (dankness.transferFrom(msg.sender, this, gross, exchangeTransferMessage) && 
-                            memes.transferFrom(_meme, listing.person, this, listing.amount)) {
-                        if (dankness.transfer(listing.person, listing.price) &&
-                                memes.transfer(_meme, msg.sender, listing.amount)) {
-                            uint256 tmp = listing.price / listing.amount;
-                            if (tmp == 0){
-                                tmp = 1;
-                            }
-                            updateDirectPrice(_meme, tmp);
-                            return true;
-                        }
+            if (memes.transferFrom(_meme, listing.person, msg.sender, listing.amount)) {
+                if (dankness.transferFrom(msg.sender, listing.person, listing.price, exchangeTransferMessage) && 
+                    dankness.transferFrom(msg.sender, this, exchangeFee, exchangeTransferMessage)) {
+                    uint256 tmp = listing.price / listing.amount;
+                    if (tmp == 0){
+                        tmp = 1;
                     }
+                    updateDirectPrice(_meme, tmp);
+                    removeListing(_meme, _person, _price, _amount, _key);
+                    return true;
+                } else {
+                    throw;
                 }
             } else {
                 removeListing(_meme, _person, _price, _amount, _key);
             }
         }
-        
-        throw;
     }
 }

@@ -30,24 +30,12 @@ contract AdvancedDanknessRecords {
     
     mapping (address=> AddressRecords) approvalRecords;
     
-    address owner;
     
-    function AdvancedDanknessRecords() {
-        owner = msg.sender;
-    }
-    
-    modifier ownerOnly() {
-        if (msg.sender != owner){
-            throw;
-        }
-        _;
-    }
-    
-    function addTransaction(address _user, uint256 _amount, address _from, address _to, address _spender, string _info) ownerOnly {
+    function addTransaction(address _user, uint256 _amount, address _from, address _to, address _spender, string _info) internal {
         transactionRecord[_user].push(TransactionRecord(_amount, _from, _to, _spender, _info));
     }
     
-    function addAddressRecord(address _user, address _address) ownerOnly {
+    function addAddressRecord(address _user, address _address) internal {
         if (!addressRecords[_user].added[_address]) {
             addressRecords[_user].addresses.push(_address);
             addressRecords[_user].added[_address] = true;
@@ -55,7 +43,7 @@ contract AdvancedDanknessRecords {
         }
     }
     
-    function removeAddressRecord(address _user, address _address) ownerOnly {
+    function removeAddressRecord(address _user, address _address) internal {
         uint256 _index = addressRecords[_user].addressToIndex[_address];
         if (addressRecords[_user].addresses.length > _index && addressRecords[_user].addresses[_index] == _address) {
             delete addressRecords[_user].addresses[_index];
@@ -67,7 +55,7 @@ contract AdvancedDanknessRecords {
         }
     }
     
-    function addApprovalRecord(address _user, address _address) ownerOnly {
+    function addApprovalRecord(address _user, address _address) internal {
         if (!approvalRecords[_user].added[_address]) {
             approvalRecords[_user].addresses.push(_address);
             approvalRecords[_user].added[_address] = true;
@@ -75,7 +63,7 @@ contract AdvancedDanknessRecords {
         }
     }
     
-    function removeApprovalRecord(address _user, address _address) ownerOnly {
+    function removeApprovalRecord(address _user, address _address) internal {
         uint256 _index = approvalRecords[_user].addressToIndex[_address];
         if (approvalRecords[_user].addresses.length > _index && approvalRecords[_user].addresses[_index] == _address) {
             delete approvalRecords[_user].addresses[_index];
@@ -155,7 +143,7 @@ contract TokenOwnership {
     }
 }
 
-contract Dankness is TokenOwnership {
+contract Dankness is TokenOwnership, AdvancedDanknessRecords {
     string public name = "Dankness";
     uint8 public decimals = 10;
     string public symbol = "D";
@@ -164,7 +152,6 @@ contract Dankness is TokenOwnership {
     mapping (address => uint256) balances;
     mapping (address => mapping (address => uint256)) allowed;
     
-    AdvancedDanknessRecords public records = new AdvancedDanknessRecords();
     
     event Transfer(address indexed _from, address indexed _to, uint256 _value);
     event Approval(address indexed _owner, address indexed _spender, uint256 _value);
@@ -185,7 +172,7 @@ contract Dankness is TokenOwnership {
             balances[minter] += _value;
             totalDank += _value;
             Minted(minter, _value);
-            records.addTransaction(this, _value, 0x0, this, this, "minted");
+            addTransaction(this, _value, 0x0, this, this, "minted");
             return true;
         } else { return false; }
     }
@@ -195,7 +182,7 @@ contract Dankness is TokenOwnership {
             balances[this] -= _value;
             totalDank -= _value;
             Minted(this, _value);
-            records.addTransaction(this, _value, this, 0x0, this, "destroyed");
+            addTransaction(this, _value, this, 0x0, this, "destroyed");
             return true;
         } else { return false; }
     }
@@ -209,8 +196,8 @@ contract Dankness is TokenOwnership {
             balances[msg.sender] -= _value;
             balances[_to] += _value;
             Transfer(msg.sender, _to, _value);
-            records.addTransaction(msg.sender, _value, msg.sender, _to, msg.sender, _info);
-            records.addAddressRecord(_to, msg.sender);
+            addTransaction(msg.sender, _value, msg.sender, _to, msg.sender, _info);
+            addAddressRecord(_to, msg.sender);
             return true;
         } else { return false; }
     }
@@ -225,10 +212,10 @@ contract Dankness is TokenOwnership {
             balances[_from] -= _value;
             allowed[_from][msg.sender] -= _value;
             Transfer(_from, _to, _value);
-            records.addTransaction(msg.sender, _value, _from, _to, msg.sender, _info);
-            records.addTransaction(_from, _value, _from, _to, msg.sender, _info);
-            records.addAddressRecord(_to, msg.sender);
-            records.addAddressRecord(_to, _from);
+            addTransaction(msg.sender, _value, _from, _to, msg.sender, _info);
+            addTransaction(_from, _value, _from, _to, msg.sender, _info);
+            addAddressRecord(_to, msg.sender);
+            addAddressRecord(_to, _from);
             return true;
         } else { return false; }
     }
@@ -240,12 +227,12 @@ contract Dankness is TokenOwnership {
     function approve(address _spender, uint256 _value) returns (bool success) {
         allowed[msg.sender][_spender] = _value;
         Approval(msg.sender, _spender, _value);
-        records.addAddressRecord(_spender, msg.sender);
-        records.addAddressRecord(msg.sender, _spender);
+        addAddressRecord(_spender, msg.sender);
+        addAddressRecord(msg.sender, _spender);
         if (_value != 0) {
-            records.addApprovalRecord(msg.sender, _spender);
+            addApprovalRecord(msg.sender, _spender);
         } else {
-            records.removeApprovalRecord(msg.sender, _spender);
+            removeApprovalRecord(msg.sender, _spender);
         }
         return true;
     }
