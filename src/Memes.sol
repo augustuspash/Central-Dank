@@ -61,6 +61,10 @@ contract MemeRecord {
     function getRecord(address _user, uint256 _index) constant returns (string meme) {
         return records[_user].memes[_index].meme;
     }
+    
+    function selfDestruct(address _reciever) ownerOnly {
+        selfdestruct(_reciever);
+    }
 }
 
 contract TokenOwnership {
@@ -115,6 +119,10 @@ contract Memes is TokenOwnership{
     function Memes(address _owner, address _minter) {
         owner = _owner;
         minter = _minter;
+    }
+    
+    function destroy() owned {
+        selfdestruct(owner);
     }
     
     function setIndexingCost(uint256 _value) minting {
